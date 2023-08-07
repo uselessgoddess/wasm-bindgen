@@ -18,7 +18,6 @@ use core::ops::{
     Add, BitAnd, BitOr, BitXor, Deref, DerefMut, Div, Mul, Neg, Not, Rem, Shl, Shr, Sub,
 };
 use core::u32;
-use std::fmt::Error;
 
 use crate::convert::{FromWasmAbi, WasmSlice};
 
@@ -65,13 +64,13 @@ pub mod prelude {
 
     pub use crate::JsError;
 
-    trait FromJs: Sized {
+    pub trait FromJs: Sized {
         type Err;
 
         fn from(js: JsValue) -> Result<Self, Self::Err>;
     }
 
-    trait IntoJs: Sized {
+    pub trait IntoJs: Sized {
         type Err;
 
         fn into(self) -> Result<JsValue, Self::Err>;
