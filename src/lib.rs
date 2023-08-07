@@ -8,7 +8,7 @@
 #![no_std]
 #![allow(coherence_leak_check)]
 #![doc(html_root_url = "https://docs.rs/wasm-bindgen/0.2")]
-#![feature(negative_impls)]
+#![feature(never_type)]
 
 use core::convert::TryFrom;
 use core::fmt;
@@ -64,6 +64,52 @@ pub mod prelude {
     }
 
     pub use crate::JsError;
+
+    trait FromJs: Sized {
+        type Err;
+
+        fn from(js: JsValue) -> Result<Self, Self::Err>;
+    }
+
+    trait IntoJs: Sized {
+        type Err;
+
+        fn into(self) -> Result<JsValue, Self::Err>;
+    }
+
+    #[cfg(feature = "serde-serialize")]
+    impl<T: for<'de> serde::Deserialize<'de>> FromJs for T {
+        type Err = serde_json::Error;
+
+        fn from(js: JsValue) -> Result<Self, Self::Err> {
+            js.into_serde()
+        }
+    }
+
+    #[cfg(feature = "serde-serialize")]
+    impl<T: serde::Serialize> IntoJs for T {
+        type Err = serde_json::Error;
+
+        fn into(self) -> Result<JsValue, Self::Err> {
+            JsValue::from_serde(&self)
+        }
+    }
+
+    impl FromJs for JsValue {
+        type Err = !;
+
+        fn from(js: JsValue) -> Result<Self, Self::Err> {
+            Ok(js)
+        }
+    }
+
+    impl IntoJs for JsValue {
+        type Err = !;
+
+        fn into(self) -> Result<JsValue, Self::Err> {
+            Ok(self)
+        }
+    }
 }
 
 pub use wasm_bindgen_macro::link_to;
@@ -83,37 +129,6 @@ if_std! {
 
     mod cache;
     pub use cache::intern::{intern, unintern};
-}
-
-#[cfg(feature = "negative-serde")]
-impl !serde::Serialize for JsValue {}
-
-#[cfg(feature = "negative-serde")]
-impl !serde::Deserialize<'_> for JsValue {}
-
-#[cfg(feature = "serde-serialize")]
-impl serde::Serialize for JsValue {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        use serde::ser::Error;
-
-        self.into_serde::<serde_json::Value>()
-            .map_err(Error::custom)?
-            .serialize(serializer)
-    }
-}
-
-#[cfg(feature = "serde-serialize")]
-impl<'de> serde::Deserialize<'de> for JsValue {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        JsValue::from_serde(&serde_json::Value::deserialize(deserializer)?)
-            .map_err(serde::de::Error::custom)
-    }
 }
 
 /// Representation of an object owned by JS.
