@@ -8,7 +8,6 @@
 #![no_std]
 #![allow(coherence_leak_check)]
 #![doc(html_root_url = "https://docs.rs/wasm-bindgen/0.2")]
-
 #![feature(negative_impls)]
 
 use core::convert::TryFrom;
@@ -19,6 +18,7 @@ use core::ops::{
     Add, BitAnd, BitOr, BitXor, Deref, DerefMut, Div, Mul, Neg, Not, Rem, Shl, Shr, Sub,
 };
 use core::u32;
+use std::fmt::Error;
 
 use crate::convert::{FromWasmAbi, WasmSlice};
 
@@ -91,6 +91,31 @@ impl !serde::Serialize for JsValue {}
 #[cfg(feature = "negative-serde")]
 impl !serde::Deserialize<'_> for JsValue {}
 
+#[cfg(feature = "serde-serialize")]
+impl serde::Serialize for JsValue {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::Error;
+
+        self.into_serde::<serde_json::Value>()
+            .map_err(Error::custom)?
+            .serialize(serializer)
+    }
+}
+
+#[cfg(feature = "serde-serialize")]
+impl<'de> serde::Deserialize<'de> for JsValue {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        JsValue::from_serde(&serde_json::Value::deserialize(deserializer)?)
+            .map_err(serde::de::Error::custom)
+    }
+}
+
 /// Representation of an object owned by JS.
 ///
 /// A `JsValue` doesn't actually live in Rust right now but actually in a table
@@ -102,7 +127,8 @@ pub struct JsValue {
     _marker: marker::PhantomData<*mut u8>, // not at all threadsafe
 }
 
-const JSIDX_OFFSET: u32 = 128; // keep in sync with js/mod.rs
+const JSIDX_OFFSET: u32 = 128;
+// keep in sync with js/mod.rs
 const JSIDX_UNDEFINED: u32 = JSIDX_OFFSET;
 const JSIDX_NULL: u32 = JSIDX_OFFSET + 1;
 const JSIDX_TRUE: u32 = JSIDX_OFFSET + 2;
