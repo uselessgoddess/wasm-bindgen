@@ -9,6 +9,8 @@
 #![allow(coherence_leak_check)]
 #![doc(html_root_url = "https://docs.rs/wasm-bindgen/0.2")]
 
+#![feature(negative_impls)]
+
 use core::convert::TryFrom;
 use core::fmt;
 use core::marker;
@@ -82,6 +84,12 @@ if_std! {
     mod cache;
     pub use cache::intern::{intern, unintern};
 }
+
+#[cfg(feature = "negative-serde")]
+impl !serde::Serialize for JsValue {}
+
+#[cfg(feature = "negative-serde")]
+impl !serde::Deserialize<'_> for JsValue {}
 
 /// Representation of an object owned by JS.
 ///
