@@ -64,49 +64,53 @@ pub mod prelude {
 
     pub use crate::JsError;
 
-    pub trait FromJs: Sized {
-        type Err;
+    pub mod soft {
+        use crate::JsValue;
 
-        fn from(js: JsValue) -> Result<Self, Self::Err>;
-    }
+        pub trait FromJs: Sized {
+            type Err;
 
-    pub trait IntoJs: Sized {
-        type Err;
-
-        fn into(self) -> Result<JsValue, Self::Err>;
-    }
-
-    #[cfg(feature = "serde-serialize")]
-    impl<T: for<'de> serde::Deserialize<'de>> FromJs for T {
-        type Err = serde_json::Error;
-
-        fn from(js: JsValue) -> Result<Self, Self::Err> {
-            js.into_serde()
+            fn from(js: JsValue) -> Result<Self, Self::Err>;
         }
-    }
 
-    #[cfg(feature = "serde-serialize")]
-    impl<T: serde::Serialize> IntoJs for T {
-        type Err = serde_json::Error;
+        pub trait IntoJs: Sized {
+            type Err;
 
-        fn into(self) -> Result<JsValue, Self::Err> {
-            JsValue::from_serde(&self)
+            fn into(self) -> Result<JsValue, Self::Err>;
         }
-    }
 
-    impl FromJs for JsValue {
-        type Err = !;
+        #[cfg(feature = "serde-serialize")]
+        impl<T: for<'de> serde::Deserialize<'de>> FromJs for T {
+            type Err = serde_json::Error;
 
-        fn from(js: JsValue) -> Result<Self, Self::Err> {
-            Ok(js)
+            fn from(js: JsValue) -> Result<Self, Self::Err> {
+                js.into_serde()
+            }
         }
-    }
 
-    impl IntoJs for JsValue {
-        type Err = !;
+        #[cfg(feature = "serde-serialize")]
+        impl<T: serde::Serialize> IntoJs for T {
+            type Err = serde_json::Error;
 
-        fn into(self) -> Result<JsValue, Self::Err> {
-            Ok(self)
+            fn into(self) -> Result<JsValue, Self::Err> {
+                JsValue::from_serde(&self)
+            }
+        }
+
+        impl FromJs for JsValue {
+            type Err = !;
+
+            fn from(js: JsValue) -> Result<Self, Self::Err> {
+                Ok(js)
+            }
+        }
+
+        impl IntoJs for JsValue {
+            type Err = !;
+
+            fn into(self) -> Result<JsValue, Self::Err> {
+                Ok(self)
+            }
         }
     }
 }
